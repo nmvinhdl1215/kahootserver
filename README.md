@@ -1,10 +1,11 @@
 Install these packages:
-pip install flask
-pip install python-dotenv
-pip install flask-wtf
-pip install flask-sqlalchemy
-pip install flask-migrate
-pip install wtforms[email] # or: pip install email-validator?
+
+1. pip install flask
+2. pip install python-dotenv
+3. pip install flask-wtf
+4. pip install flask-sqlalchemy
+5. pip install flask-migrate
+6. pip install wtforms[email] # or: pip install email-validator?
 
 
 Issues:
