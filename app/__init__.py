@@ -8,7 +8,8 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-login = LoginManager(app)
-login.login_view = 'login'
+login_manager = LoginManager(app)
+# login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in !'
 
 from app import routes, models

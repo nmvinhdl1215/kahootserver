@@ -2,7 +2,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import db, login
+from app import db, login_manager
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -16,10 +16,28 @@ class User(UserMixin, db.Model):
         return '<User {}>'.format(self.username)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        # self.password_hash = generate_password_hash(password)
+        self.password_hash = password
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        # return check_password_hash(self.password_hash, password)
+        return self.password_hash == password
+    
+    def to_dict(self):
+        data = {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'password_hash': self.password_hash
+        }
+        return data
+    
+    def from_dict(self, data, new_user=False):
+        for field in ['username', 'email']:
+            if field in data:
+                setattr(self, field, data[field])
+        if new_user and 'password' in data:
+            self.set_password(data['password'])
     
 # class Quiz(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
@@ -96,6 +114,6 @@ class User(UserMixin, db.Model):
 #     question = db.relationship('Question')
 #     option = db.relationship('Option')
 
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
+# @login_manager.user_loader
+# def load_user(id):
+#     return User.query.get(int(id))
