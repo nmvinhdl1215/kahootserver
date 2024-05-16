@@ -1,33 +1,8 @@
-from flask import render_template, request, jsonify, session
+from flask import request, jsonify, session
 from app import app, db, login_manager
-# from app.forms import LoginForm, RegistrationForm
 from flask_login import current_user, login_user, login_required, logout_user
 from app.models import *
-# from werkzeug.urls import url_parse
-# from urllib.parse import urlparse
 from app.errors import bad_request, error_response
- 
-@app.route('/')
-@app.route('/index')
-@login_required
-def index():
-    # user = {'username': 'Thai'}
-    posts = [
-        {
-            'author': {'username': 'tcm1'},
-            'body': 'post1'
-        },
-        {
-            'author': {'username': 'tcm2'},
-            'body': 'post2'
-        }
-    ]
-    return render_template('index.html', title='Home', posts=posts)
-
-@app.route('/users/<int:id>', methods=['GET'])
-@login_required
-def get_user(id):
-    return jsonify(User.query.get_or_404(id).to_dict())
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -71,16 +46,6 @@ def register():
     # response.headers['Location'] = url_for('api.get_user', id=user.id)
     return response
 
-# @app.route('/user/<username>')
-# @login_required
-# def user(username):
-#     user = User.query.filter_by(username=username).first_or_404()
-#     posts = [
-#         {'author': user, 'body': 'post1'},
-#         {'author': user, 'body': 'post2'}
-#     ]
-#     return render_template('user.html', user=user, posts=posts)
-
 @login_manager.unauthorized_handler
 def unauthorized():
     return error_response(401, 'login required')
@@ -101,10 +66,12 @@ def create_quiz():
         return bad_request('Title and questions are required')
     
     quiz = Quiz(user_id=current_user.id)
-    quiz.from_dict(data)
-    
-    db.session.add(quiz)
-    db.session.commit()
+    try:
+        quiz.from_dict(data)
+        db.session.add(quiz)
+        db.session.commit()
+    except ValueError as e:
+        return bad_request(str(e))
     
     response = jsonify(quiz.to_dict())
     response.status_code = 201
@@ -131,8 +98,12 @@ def update_quiz(quiz_id):
     data = request.get_json() or {}
     if not data:
         return bad_request('No data provided')
-    quiz.from_dict(data)
-    db.session.commit()
+    try:
+        quiz.from_dict(data)
+        db.session.commit()
+    except ValueError as e:
+        return bad_request(str(e))
+    
     
     return jsonify(quiz.to_dict())
 

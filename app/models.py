@@ -51,6 +51,10 @@ class Quiz(db.Model):
     # back_populates='quiz': used to set up a bidirectional relationship: The Question class should 
     #   have a corresponding relationship attr called quiz that references the Quiz object to which each 
     #   Question belongs. The back_populates parameter must be mirrored in the Question class w/ corresponding attr.
+    # The cascade option ensures that when a Quiz is deleted, all associated Question objects are also deleted, 
+    # and when a Question is deleted, all associated Option objects are also deleted. If an Option or Question 
+    # becomes orphaned (i.e., it is no longer associated with a parent Quiz or Question), it is automatically deleted 
+    # from the database
     questions = db.relationship('Question', back_populates='quiz', cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -62,12 +66,36 @@ class Quiz(db.Model):
             'questions': [question.to_dict() for question in self.questions]
         }
     
-    def from_dict(self, data):
-        for field in ['title']:
-            if field in data:
-                setattr(self, field, data[field])
-        if 'questions' in data:
-            self.questions = [Question().from_dict(question_data, self) for question_data in data['questions']]
+    def from_dict(self, data, new_quiz=False):
+        if new_quiz:
+            # "title" and "questions" are required
+            # When creating a new quiz, it must have a title and at least 1 question
+            if "title" not in data or "questions" not in data:
+                raise ValueError('Title and questions are required')
+            if data["title"] == "":
+                raise ValueError('Title is required')
+            if data["questions"] == []:
+                raise ValueError('At least 1 question is required')
+            setattr(self, "title", data["title"])
+            for question_data in data['questions']:
+                new_question = Question().from_dict(question_data, self, new_question=True)
+                self.questions.append(new_question)
+            # self.questions = [Question().from_dict(question_data, self, new_question=True) for question_data in data['questions']]
+        else:
+            if "title" in data:
+                setattr(self, "title", data["title"])
+            if "questions" in data:
+                existing_question_ids = {question.id: question for question in self.questions}
+                for question_data in data['questions']:
+                    question_id = question_data.get('id')
+                    # updating a quiz requires that request provides question id and option id
+                    if question_id is None:
+                        # raise ValueError('Question id is missing in the provided data.')
+                        self.questions.append(Question().from_dict(question_data, self, new_question=True))
+                    # question id must be valid (exist)
+                    if question_id not in existing_question_ids:
+                        raise ValueError('Question id is invalid.')
+                    existing_question_ids[question_id].from_dict(question_data, self)
         return self
 
 class Question(db.Model):
@@ -86,14 +114,36 @@ class Question(db.Model):
             'options': [option.to_dict() for option in self.options]
         }
     
-    def from_dict(self, data, quiz=None):
-        for field in ['text']:
-            if field in data:
-                setattr(self, field, data[field])
-        if quiz:
-            self.quiz = quiz
-        if 'options' in data:
-            self.options = [Option().from_dict(option_data, self) for option_data in data['options']]
+    def from_dict(self, data, quiz=None, new_question=False):
+        if new_question:
+            if "text" not in data:
+                raise ValueError('Question text is required')
+            if "options" not in data:
+                raise ValueError('Question options are required')
+            if data["options"] == []:
+                raise ValueError('At least 1 option is required')
+            setattr(self, "text", data["text"])
+            if quiz:
+                self.quiz = quiz
+            for option_data in data['options']:
+                new_option = Option().from_dict(option_data, self, new_option=True)
+                self.options.append(new_option)
+            # self.options = [Option().from_dict(option_data, self, new_option=True) for option_data in data['options']]
+        else:
+            if "text" in data:
+                setattr(self, "text", data["text"])
+            if 'options' in data:
+                existing_option_ids = {option.id: option for option in self.options}
+                for option_data in data['options']:
+                    option_id = option_data.get('id')
+                    # when updating, option id must be provided
+                    if option_id is None:
+                        # raise ValueError('Option id is missing in the provided data.')
+                        self.options.append(Option().from_dict(option_data, self, new_option=True))
+                    # option id must be valid (exist)
+                    if option_id not in existing_option_ids:
+                        raise ValueError('Option id is invalid.')
+                    existing_option_ids[option_id].from_dict(option_data, self)
         return self
 
 class Option(db.Model):
@@ -111,12 +161,20 @@ class Option(db.Model):
             'is_correct': self.is_correct
         }
     
-    def from_dict(self, data, question=None):
-        for field in ['text', 'is_correct']:
-            if field in data:
-                setattr(self, field, data[field])
-        if question:
-            self.question = question
+    def from_dict(self, data, question=None, new_option=False):
+        if new_option:
+            if "text" not in data:
+                raise ValueError('Option text is required')
+            if "is_correct" not in data:
+                raise ValueError('Option correctness is required')
+            setattr(self, "text", data["text"])
+            setattr(self, "is_correct", data["is_correct"])
+            if question:
+                self.question = question
+        else:
+            for field in ['text', 'is_correct']:
+                if field in data:
+                    setattr(self, field, data[field])
         return self
 
 # class Session(db.Model):

@@ -22,6 +22,7 @@ MarkupSafe==2.1.5
 mdurl==0.1.2
 multidict==6.0.5
 Pygments==2.18.0
+PyJWT==2.8.0
 PySocks==1.7.1
 python-dotenv==1.0.1
 requests==2.31.0
