@@ -2,7 +2,7 @@ from flask import render_template, request, jsonify, session
 from app import app, db, login_manager
 # from app.forms import LoginForm, RegistrationForm
 from flask_login import current_user, login_user, login_required, logout_user
-from app.models import User
+from app.models import *
 # from werkzeug.urls import url_parse
 # from urllib.parse import urlparse
 from app.errors import bad_request, error_response
@@ -92,3 +92,33 @@ def unauthorized():
 @login_manager.user_loader
 def load_user(id):
     return User.query.get(int(id))
+
+
+
+
+@app.route('/create/quiz', methods=['POST'])
+@login_required
+def create_quiz():
+    data = request.get_json() or {}
+    if 'title' not in data or 'questions' not in data:
+        return bad_request('Title and questions are required')
+    
+    quiz = Quiz(user_id=current_user.id)
+    quiz.from_dict(data)
+    
+    db.session.add(quiz)
+    db.session.commit()
+    
+    response = jsonify(quiz.to_dict())
+    response.status_code = 201
+    return response
+
+@app.route('/quiz/<int:quiz_id>', methods=['GET'])
+@login_required
+def get_quiz(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    # Check if the current user is the owner of the quiz
+    if quiz.user_id != current_user.id:
+        return error_response(403, 'You do not have permission to access this quiz.')
+    
+    return jsonify(quiz.to_dict())
