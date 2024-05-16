@@ -46,6 +46,11 @@ class Quiz(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     # category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     # category = db.relationship('Category', back_populates='quizzes')
+
+    # db.relationship(): establish a relationship between the Quiz and Question models
+    # back_populates='quiz': used to set up a bidirectional relationship: The Question class should 
+    #   have a corresponding relationship attr called quiz that references the Quiz object to which each 
+    #   Question belongs. The back_populates parameter must be mirrored in the Question class w/ corresponding attr.
     questions = db.relationship('Question', back_populates='quiz', cascade='all, delete-orphan')
 
     def to_dict(self):

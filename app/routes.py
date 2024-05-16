@@ -27,8 +27,6 @@ def index():
 @app.route('/users/<int:id>', methods=['GET'])
 @login_required
 def get_user(id):
-    # if not current_user.is_authenticated:
-    #     return error_response(401, 'login required')
     return jsonify(User.query.get_or_404(id).to_dict())
 
 @app.route('/login', methods=['POST'])
@@ -49,8 +47,6 @@ def login():
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    # if not current_user.is_authenticated:
-    #     return error_response(401, 'login required')
     logout_user()
     session.pop('user_id', None)
     return jsonify({'message': 'logout success'})
@@ -94,6 +90,7 @@ def load_user(id):
     return User.query.get(int(id))
 
 
+# -------- QUIZ ---------
 
 
 @app.route('/create/quiz', methods=['POST'])
@@ -122,3 +119,38 @@ def get_quiz(quiz_id):
         return error_response(403, 'You do not have permission to access this quiz.')
     
     return jsonify(quiz.to_dict())
+
+@app.route('/quiz/<int:quiz_id>', methods=['PUT'])
+@login_required
+def update_quiz(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    # Check if the current user is the owner of the quiz
+    if quiz.user_id != current_user.id:
+        return error_response(403, 'You do not have permission to access this quiz.')
+    
+    data = request.get_json() or {}
+    if not data:
+        return bad_request('No data provided')
+    quiz.from_dict(data)
+    db.session.commit()
+    
+    return jsonify(quiz.to_dict())
+
+@app.route('/quiz/<int:quiz_id>', methods=['DELETE'])
+@login_required
+def delete_quiz(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    # Check if the current user is the owner of the quiz
+    if quiz.user_id != current_user.id:
+        return error_response(403, 'You do not have permission to access this quiz.')
+    
+    db.session.delete(quiz)
+    db.session.commit()
+    
+    return jsonify({'message': 'Quiz deleted successfully'})
+
+@app.route('/quiz/all', methods=['GET'])
+@login_required
+def get_all_quizzes():
+    quizzes = Quiz.query.filter_by(user_id=current_user.id).all()
+    return jsonify([quiz.to_dict() for quiz in quizzes])
