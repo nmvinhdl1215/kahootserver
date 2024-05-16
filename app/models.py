@@ -39,29 +39,80 @@ class User(UserMixin, db.Model):
         if new_user and 'password' in data:
             self.set_password(data['password'])
     
-# class Quiz(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     title = db.Column(db.String(128), nullable=False)
-#     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-#     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
-#     category = db.relationship('Category', back_populates='quizzes')
-#     questions = db.relationship('Question', back_populates='quiz', cascade='all, delete-orphan')
+class Quiz(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    title = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    # category = db.relationship('Category', back_populates='quizzes')
+    questions = db.relationship('Question', back_populates='quiz', cascade='all, delete-orphan')
 
-# class Question(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
-#     text = db.Column(db.Text, nullable=False)
-#     type = db.Column(db.String(32), nullable=False, default='multiple_choice')
-#     quiz = db.relationship('Quiz', back_populates='questions')
-#     options = db.relationship('Option', back_populates='question', cascade='all, delete-orphan')
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'created_at': self.created_at,
+            'questions': [question.to_dict() for question in self.questions]
+        }
+    
+    def from_dict(self, data):
+        for field in ['title']:
+            if field in data:
+                setattr(self, field, data[field])
+        if 'questions' in data:
+            self.questions = [Question().from_dict(question_data, self) for question_data in data['questions']]
+        return self
 
-# class Option(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False)
-#     text = db.Column(db.Text, nullable=False)
-#     is_correct = db.Column(db.Boolean, default=False, nullable=False)
-#     question = db.relationship('Question', back_populates='options')
+class Question(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    # type = db.Column(db.String(32), nullable=False, default='multiple_choice')
+    quiz = db.relationship('Quiz', back_populates='questions')
+    options = db.relationship('Option', back_populates='question', cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'quiz_id': self.quiz_id,
+            'text': self.text,
+            'options': [option.to_dict() for option in self.options]
+        }
+    
+    def from_dict(self, data, quiz=None):
+        for field in ['text']:
+            if field in data:
+                setattr(self, field, data[field])
+        if quiz:
+            self.quiz = quiz
+        if 'options' in data:
+            self.options = [Option().from_dict(option_data, self) for option_data in data['options']]
+        return self
+
+class Option(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    is_correct = db.Column(db.Boolean, default=False, nullable=False)
+    question = db.relationship('Question', back_populates='options')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'question_id': self.question_id,
+            'text': self.text,
+            'is_correct': self.is_correct
+        }
+    
+    def from_dict(self, data, question=None):
+        for field in ['text', 'is_correct']:
+            if field in data:
+                setattr(self, field, data[field])
+        if question:
+            self.question = question
+        return self
 
 # class Session(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
